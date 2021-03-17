@@ -11,7 +11,7 @@
    save_state="n"
    date_written="2021-01-22 15:00:00"
    requires="5.07"
-   version="1.0"
+   version="1.1"
    >
 <description trim="y">
 <![CDATA[
@@ -96,6 +96,12 @@ function Sliders.initialize()
         "Sliders.check_path"
     )
     
+    AddAlias("Alias_Sliders_Help",
+        "^viicefall\\s+sliders\\s+help$", "",
+        alias_flag.Enabled + alias_flag.IgnoreAliasCase + alias_flag.RegularExpression + alias_flag.Temporary,
+        "Sliders.help"
+    )
+    
     AddTriggerEx("Trigger_Sliders_Entrance",
         "^This mysterious figure is shrouded in robes, anticipating your arrival\\.$", "",
         trigger_flag.Enabled + trigger_flag.RegularExpression + trigger_flag.Temporary, custom_colour.NoChange, 0,
@@ -170,6 +176,7 @@ function Sliders.initialize()
 end
 
 function Sliders.enter(trigger, line, wc)
+    Utility.print("Entered Icefall Sliders. Type '@Yvisliders help@w' for commands you can use on this section.")
 end
 
 function Sliders.get_map(alias, line, wc)
@@ -473,6 +480,47 @@ function Sliders.in_crank_station()
     return Sliders.crankStations[gmcp("room.info.num")]
 end
 
+function Sliders.help(alias, line, wc)
+    Utility.print("@YVI ICEFALL - Sliders")
+    Utility.print("This plugin attempts to be as transparent as possible in all Icefall sections.")
+    Utility.print("That is, it does not change any of the default special commands that you can")
+    Utility.print("use in each section.")
+    Utility.print("Thus, to begin sliding, type '@Yslide <normal|hard|extreme>@w' in Entrance to Ice")
+    Utility.print("Sliders in the Icefall area.")
+    Utility.print("Once you have begun, you'll need to view the map. Type '@Yglance@w' to do so. This")
+    Utility.print("will initialize the plugin's internal map state and display the map to you in a")
+    Utility.print("much more screen-reader-friendly format.")
+    Utility.print("As a general overview, the main map is laid out as a 6x6 grid of rooms. The")
+    Utility.print("columns are named by letter from A (leftmost column) to F (rightmost column)")
+    Utility.print("and the rows are named by number from 1 (bottom row) to 6 (top row). Coordinate")
+    Utility.print("B5, for example, is located one right and four up from the bottom left corner.")
+    Utility.print("The goal is to rotate statues (represented by directions @Ynorth@w/@Yeast@w/@Ysouth@w/@Ywest")
+    Utility.print("on the VI map) to allow you to slide from your current position to one of")
+    Utility.print("Slick's four hiding places. These are located on the edges of the map: north")
+    Utility.print("from D6, east from F3, south from C1, and west from A4.")
+    Utility.print("Type '@Y<row>cw@w' to rotate a row clockwise, and '@Y<row>ccw@w' to rotate it counter-")
+    Utility.print("clockwise. '@Y3cw@w', for example, would rotate row 3 clockwise.")
+    Utility.print("Type '@Y<col>cw@w' to rotate a column clockwise, and '@Y<col>ccw@w' to rotate it")
+    Utility.print("counter-clockwise. '@Yeccw@w', for example, would rotate column E counter-clock-")
+    Utility.print("wise.")
+    Utility.print("Every time you turn a crank, the full map will be displayed again for you to")
+    Utility.print("review. (Note: This can admittedly get a little spammy at times. In future it")
+    Utility.print("might change depending on user input.)")
+    Utility.print("Type '@Yrotate crank@w' once you reach one of the hiding places to attempt to un-")
+    Utility.print("cover Slick.")
+    Utility.print("Finally, there are a few extra commands available to more easily and quickly")
+    Utility.print("view certain parts of the map. Type '@Ycol <col>@w' (e.g., '@Ycol c@w') to view the")
+    Utility.print("designated column, '@Yrow <row>@w' (e.g., '@Yrow 2@w') to view the designated row, and")
+    Utility.print("'@Ycoord <col><row>@w' (e.g., '@Ycoord f6@w') to view the designated coordinate. Once")
+    Utility.print("you think you have the path right, type '@Ycheck <dir>[ <dir>[ <dir>]]@w' to check")
+    Utility.print("it. The dirs you enter into this command are the directions you yourself plan")
+    Utility.print("to move manually to begin the slide. For example, if you are at A1, and you")
+    Utility.print("wish to get a summary of the path if you were to go east and then north, type")
+    Utility.print("'@Ycheck e n@w'.")
+    Utility.print("@YP.S.@w, there is always a horizontal wall between C3 and C4. Take care to avoid")
+    Utility.print("that!")
+end
+
 
 
 --------------------------------------------------
@@ -535,6 +583,11 @@ Utility = {}
 
 function Utility.initialize()
     -- General aliases
+    AddAlias("Alias_Utility_Help",
+        "^viicefall\\s+help$", "",
+        alias_flag.Enabled + alias_flag.IgnoreAliasCase + alias_flag.RegularExpression + alias_flag.Temporary,
+        "Utility.help"
+    )
     
     local initializers = {
         Sliders.initialize,
@@ -562,6 +615,12 @@ function Utility.deinitialize()
     end
 end
 
+function Utility.help(alias, line, wc)
+    Utility.print("@YVI ICEFALL - General Help")
+    Utility.print("@Yviicefall update@w: Check for and install plugin updates.")
+    Utility.print("@Yviicefall sliders help@w: Show help on Ice Sliders.")
+end
+
 function Utility.print(str)
     -- Lets us use Aard color codes in our ColourNotes
     AnsiNote(stylesToANSI(ColoursToStyles("@w" .. str .. "@w")))
@@ -575,6 +634,8 @@ end
 
 function OnPluginInstall()
     Utility.initialize()
+    Utility.print("@YVI_Icefall @wplugin installed.")
+    Utility.print("Type '@Yviicefall help@w' for help on general commands.")
 end
 
 function OnPluginConnect()
