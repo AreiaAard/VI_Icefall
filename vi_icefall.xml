@@ -476,6 +476,58 @@ end
 
 
 --------------------------------------------------
+-- Update
+--------------------------------------------------
+
+Update = {}
+
+function Update.initialize()
+    AddAlias("alias_update",
+        "^viicefall\\s+update$", "",
+        alias_flag.Enabled + alias_flag.IgnoreAliasCase + alias_flag.RegularExpression + alias_flag.Temporary,
+        "Update.update"
+    )
+end
+
+function Update.update(alias, line, wc)
+    raw = "https://raw.githubusercontent.com/AreiaAard/VI_Icefall/main/vi_icefall.xml"
+    async_ok, async = pcall (require, "async")
+    if async_ok then
+        plugin_page = async.doAsyncRemoteRequest(raw, Update.raw_get, "HTTPS")
+    else
+        Utility.print("@RError@w. Update failed.")
+    end
+end
+
+function Update.raw_get(retval, page, status, headers, full_status, request_url)
+    local PLUGIN_NAME = GetPluginInfo(GetPluginID(), 1)
+    local PLUGIN_VERSION = GetPluginInfo(GetPluginID(), 19)
+    if (status == 200) then
+        raw_version = tonumber(string.match(page, '%s%s+version="([0-9%.]+)"'))
+    end
+    if (raw_version == PLUGIN_VERSION) then
+        Utility.print(string.format("@Y%s @wis up-to-date with the current version.", PLUGIN_NAME))
+    elseif (raw_version > PLUGIN_VERSION) then
+        Utility.print(string.format("Updating @Y%s @wfrom v%s to v%s.", PLUGIN_NAME, PLUGIN_VERSION, raw_version))
+        Utility.print("                 Please do not touch anything.")
+        local file = io.open(GetPluginInfo(GetPluginID(), 6), "w")
+        file:write(page)
+        file:close()
+    end
+    raw_version = nil
+    if (GetAlphaOption("script_prefix") == "") then
+        SetAlphaOption("script_prefix", "\\\\\\")
+    end
+    Execute(string.format(
+        "%sDoAfterSpecial(1, \"ReloadPlugin('%s')\", sendto.script)",
+        GetAlphaOption("script_prefix"), GetPluginID()
+    ))
+    Utility.print(string.format("@Y%s @wupdate completed.", PLUGIN_NAME))
+end
+
+
+
+--------------------------------------------------
 -- Utility
 --------------------------------------------------
 
@@ -486,6 +538,7 @@ function Utility.initialize()
     
     local initializers = {
         Sliders.initialize,
+        Update.initialize,
     }
     for _, initializer in ipairs(initializers) do
         initializer()
