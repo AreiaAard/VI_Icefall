@@ -1,0 +1,554 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE muclient>
+
+<muclient>
+<plugin
+   name="VI_Icefall"
+   author="Areia"
+   id="c06d140a29cc7aaf52faed9b"
+   language="Lua"
+   purpose="Assist screen readers in Icefall epic"
+   save_state="n"
+   date_written="2021-01-22 15:00:00"
+   requires="5.07"
+   version="1.0"
+   >
+<description trim="y">
+<![CDATA[
+]]>
+</description>
+
+</plugin>
+
+<include name="constants.lua"/>
+
+
+
+<aliases>
+</aliases>
+
+
+
+<triggers>
+</triggers>
+
+
+
+<script>
+<![CDATA[
+require "commas"
+require "gmcphelper"
+require "tprint"
+require "var"
+require "wait"
+dofile(GetInfo(60) .. "aardwolf_colors.lua")
+
+
+
+--------------------------------------------------
+-- Sliders
+--------------------------------------------------
+
+Sliders = {}
+
+function Sliders.initialize()
+    AddAlias("Alias_Sliders_Get_Map",
+        "^g(?:l|la|lan|lanc|lance)$", "",
+        alias_flag.Enabled + alias_flag.IgnoreAliasCase + alias_flag.RegularExpression + alias_flag.Temporary,
+        "Sliders.get_map"
+    )
+    
+    AddAlias("Alias_Sliders_Show_Map",
+        "^showmap$", "",
+        alias_flag.Enabled + alias_flag.IgnoreAliasCase + alias_flag.RegularExpression + alias_flag.Temporary,
+        "Sliders.show_map"
+    )
+    AddAlias("Alias_Sliders_Show_Column",
+        "^col\\s*(?<column>[a-z])$", "",
+        alias_flag.Enabled + alias_flag.IgnoreAliasCase + alias_flag.RegularExpression + alias_flag.Temporary,
+        "Sliders.show_column"
+    )
+    AddAlias("Alias_Sliders_Show_Row",
+        "^row\\s*(?<row>[0-9])$", "",
+        alias_flag.Enabled + alias_flag.IgnoreAliasCase + alias_flag.RegularExpression + alias_flag.Temporary,
+        "Sliders.show_row"
+    )
+    AddAlias("Alias_Sliders_Show_Coord",
+        "^coord\\s*(?<column>[a-z])(?<row>[0-9])$", "",
+        alias_flag.Enabled + alias_flag.IgnoreAliasCase + alias_flag.RegularExpression + alias_flag.Temporary,
+        "Sliders.show_coord"
+    )
+    
+    AddAlias("Alias_Sliders_Rotate_Column",
+        "^(?<column>a|b|c|d|e|f)(?<direction>c(?:w|cw))$", "",
+        alias_flag.Enabled + alias_flag.IgnoreAliasCase + alias_flag.RegularExpression + alias_flag.Temporary,
+        "Sliders.rotate_column"
+    )
+    AddAlias("Alias_Sliders_Rotate_Row",
+        "^(?<row>1|2|3|4|5|6)(?<direction>c(?:w|cw))$", "",
+        alias_flag.Enabled + alias_flag.IgnoreAliasCase + alias_flag.RegularExpression + alias_flag.Temporary,
+        "Sliders.rotate_row"
+    )
+    
+    AddAlias("Alias_Sliders_Check_Path",
+        "^check\\s+(?<startDirs>[nesw](?: [nesw])*)$", "",
+        alias_flag.Enabled + alias_flag.IgnoreAliasCase + alias_flag.RegularExpression + alias_flag.Temporary,
+        "Sliders.check_path"
+    )
+    
+    AddTriggerEx("Trigger_Sliders_Entrance",
+        "^This mysterious figure is shrouded in robes, anticipating your arrival\\.$", "",
+        trigger_flag.Enabled + trigger_flag.RegularExpression + trigger_flag.Temporary, custom_colour.NoChange, 0,
+        "", "Sliders.enter", sendto.script, 100
+    )
+    
+    AddTriggerEx("Trigger_Sliders_Map_Start",
+        "^\\{Sliders\\}$", "",
+        trigger_flag.OmitFromOutput + trigger_flag.RegularExpression + trigger_flag.Temporary, custom_colour.NoChange, 0,
+        "", "Sliders.map_start", sendto.script, 100
+    )
+    
+    AddTriggerEx("Trigger_Sliders_Map_End",
+        "^\\{/Sliders\\}$", "",
+        trigger_flag.OmitFromOutput + trigger_flag.RegularExpression + trigger_flag.Temporary, custom_colour.NoChange, 0,
+        "", "Sliders.map_end", sendto.script, 100
+    )
+    SetTriggerOption("Trigger_Sliders_Map_End", "group", "Trigger_Group_Sliders_Map")
+    
+    -- Uninteresting gag triggers
+    AddTriggerEx("Trigger_Sliders_Map1",
+        "^[\\s-]+$", "",
+        trigger_flag.OmitFromOutput + trigger_flag.RegularExpression + trigger_flag.Temporary, custom_colour.NoChange, 0,
+        "", "", sendto.world, 100
+    )
+    AddTriggerEx("Trigger_Sliders_Map2",
+        "^\\s+\\|\\[\\?\\]\\|$", "",
+        trigger_flag.OmitFromOutput + trigger_flag.RegularExpression + trigger_flag.Temporary, custom_colour.NoChange, 0,
+        "", "", sendto.world, 100
+    )
+    AddTriggerEx("Trigger_Sliders_Map3",
+        "^\\s+(?:-+)?\\|[\\s-]+\\|(?:-+)?$", "",
+        trigger_flag.OmitFromOutput + trigger_flag.RegularExpression + trigger_flag.Temporary, custom_colour.NoChange, 0,
+        "", "", sendto.world, 100
+    )
+    AddTriggerEx("Trigger_Sliders_Map4",
+        "^\\s+A\\s+B\\s+C\\s+D\\s+E\\s+F$", "",
+        trigger_flag.OmitFromOutput + trigger_flag.RegularExpression + trigger_flag.Temporary, custom_colour.NoChange, 0,
+        "", "", sendto.world, 100
+    )
+    AddTriggerEx("Trigger_Sliders_Map5",
+        "^# - YOU ARE HERE    \\? - SLICK'S LOCATION\\?$", "",
+        trigger_flag.OmitFromOutput + trigger_flag.RegularExpression + trigger_flag.Temporary, custom_colour.NoChange, 0,
+        "", "", sendto.world, 100
+    )
+    AddTriggerEx("Trigger_Sliders_Map6",
+        "^v,\\<,\\^,\\> - GUST STATUES FACING SOUTH, WEST, NORTH, EAST$", "",
+        trigger_flag.OmitFromOutput + trigger_flag.RegularExpression + trigger_flag.Temporary, custom_colour.NoChange, 0,
+        "", "", sendto.world, 100
+    )
+    -- This one is the only one we really care about. Record each row of rooms.
+    AddTriggerEx("Trigger_Sliders_Map7",
+        "^(?:\\s+|\\|\\[\\?\\])\\|(?<A>.{3}) (?<B>.{3}) (?<C>.{3}) (?<D>.{3}) (?<E>.{3}) (?<F>.{3})\\|(?:\\s+|\\[\\?\\]\\| )(?<row>\\d)$", "",
+        trigger_flag.OmitFromOutput + trigger_flag.RegularExpression + trigger_flag.Temporary, custom_colour.NoChange, 0,
+        "", "Sliders.map_parse", sendto.script, 100
+    )
+    for i = 1, 7 do
+        SetTriggerOption("Trigger_Sliders_Map" .. i, "group", "Trigger_Group_Sliders_Map")
+    end
+    
+    Sliders.map = {}
+    Sliders.crankStations = {
+        ["38862"] = {dir="SW", coord="A1"}, ["38867"] = {dir="SE", coord="F1"},
+        ["38892"] = {dir="NW", coord="A6"}, ["38897"] = {dir="NE", coord="F6"}
+    }
+    Sliders.legend = {
+        DIR_NORTH = "~^~", DIR_EAST = "~>~",
+        DIR_SOUTH = "~v~", DIR_WEST = "~<~",
+        ICE = "~ ~", ROCK = "^ ^",
+        CURRENT_LOCATION = "^#^"
+    }
+end
+
+function Sliders.enter(trigger, line, wc)
+end
+
+function Sliders.get_map(alias, line, wc)
+    if (not Sliders.in_crank_station()) then
+        Send("glance")
+        return
+    end
+    EnableTrigger("Trigger_Sliders_Map_Start", true)
+    SendNoEcho("echo {Sliders}")
+    Send("glance")
+    SendNoEcho("echo {/Sliders}")
+end
+
+function Sliders.map_start(trigger, line, wc)
+    EnableTrigger("Trigger_Sliders_Map_Start", false)
+    EnableTriggerGroup("Trigger_Group_Sliders_Map", true)
+    Sliders.map = {A={}, B={}, C={}, D={}, E={}, F={}}
+end
+
+function Sliders.map_parse(trigger, line, wc)
+    for column in string.gmatch("ABCDEF", "%a") do
+        Sliders.map[column][tonumber(wc.row)] = wc[column]
+    end
+end
+
+function Sliders.map_end(trigger, line, wc)
+    EnableTriggerGroup("Trigger_Group_Sliders_Map", false)
+    Sliders.show_map()
+end
+
+function Sliders.show_map()
+    local station = Sliders.in_crank_station()
+    if (not Sliders.in_crank_station()) then
+        Utility.print("You must be in a crank station to use this command.")
+        return
+    end
+    if (not next(Sliders.map)) then
+        Utility.print("Map not initialized. Type '@Yglance@w' to view it.")
+        return
+    end
+    Utility.print(string.format("Current location: %s (%s)", station.coord, station.dir))
+    for row = 6, 1, -1 do
+        for column in string.gmatch("ABCDEF", "%a") do
+            local coord = column .. row -- eg, A1, A2, etc.
+            local room = Sliders.convert_legend(Sliders.map[column][row]) -- eg, ice/rock/etc.
+            Tell(string.format("%s: %-7s ", coord, room))
+        end
+        Note("")
+    end
+end
+
+function Sliders.show_column(alias, line, wc)
+    if (not Sliders.in_crank_station()) then
+        Utility.print("You must be in a crank station to use this command.")
+        return
+    end
+    if (not next(Sliders.map)) then
+        Utility.print("The map is not yet initialized. Type '@Yglance@w' to view it.")
+        return
+    end
+    local column = wc.column:upper()
+    if (not Sliders.map[column]) then
+        Utility.print("That column does not exist.")
+        return
+    end
+    local list = {}
+    for row = 1, 6 do
+        local coord = column .. row -- eg, A1, B1
+        table.insert(list, string.format("%s: %s", coord, Sliders.convert_legend(Sliders.map[column][row])))
+    end
+    Utility.print(table.concat(list, ". "))
+end
+
+function Sliders.show_row(alias, line, wc)
+    if (not Sliders.in_crank_station()) then
+        Utility.print("You must be in a crank station to use this command.")
+        return
+    end
+    if (not next(Sliders.map)) then
+        Utility.print("The map is not yet initialized. Type '@Yglance@w' to view it.")
+        return
+    end
+    local row = tonumber(wc.row)
+    for column in string.gmatch("ABCDEF", "%a") do
+        if not (Sliders.map[column] and Sliders.map[column][row]) then
+            Utility.print("That row does not exist.")
+            return
+        end
+    end
+    local list = {}
+    for column in string.gmatch("ABCDEF", "%a") do
+        local coord = column .. row -- eg, A1, B1
+        table.insert(list, string.format("%s: %s", coord, Sliders.convert_legend(Sliders.map[column][row])))
+    end
+    Utility.print(table.concat(list, ". "))
+end
+
+function Sliders.show_coord(alias, line, wc)
+    if (not Sliders.in_crank_station()) then
+        Utility.print("You must be in a crank station to use this command.")
+        return
+    end
+    if (not next(Sliders.map)) then
+        Utility.print("The map is not yet initialized. Type '@Yglance@w' to view it.")
+        return
+    end
+    local column = wc.column:upper()
+    local row = tonumber(wc.row)
+    if not (Sliders.map[column] and Sliders.map[column][row]) then
+        Utility.print("That coordinate does not exist.")
+        return
+    end
+    Utility.print(string.format("%s%d: %s", column, row, Sliders.convert_legend(Sliders.map[column][row])))
+end
+
+function Sliders.convert_legend(symbol)
+    local conversions = {
+        [Sliders.legend.DIR_NORTH] = "North", [Sliders.legend.DIR_EAST] = "East",
+        [Sliders.legend.DIR_SOUTH] = "South", [Sliders.legend.DIR_WEST] = "West",
+        [Sliders.legend.ICE] = "Ice", [Sliders.legend.ROCK] = "Rock", 
+        [Sliders.legend.CURRENT_LOCATION] = "Current", 
+    }
+    return conversions[symbol] or symbol
+end
+
+function Sliders.rotate_column(alias, line, wc)
+    if (not Sliders.in_crank_station()) then
+        Utility.print("You must be in a crank station to use this command.")
+        return
+    end
+    if (not next(Sliders.map)) then
+        Utility.print("The map is not yet initialized. Type '@Yglance@w' to view it.")
+        return
+    end
+    local column = wc.column:upper()
+    local direction = wc.direction:lower()
+    Send(line)
+    for row = 1, 6 do
+        if (Sliders.map[column][row] == "~^~") then
+            Sliders.map[column][row] = direction == "cw" and "~>~" or "~<~"
+        elseif (Sliders.map[column][row] == "~>~") then
+            Sliders.map[column][row] = direction == "cw" and "~v~" or "~^~"
+        elseif (Sliders.map[column][row] == "~v~") then
+            Sliders.map[column][row] = direction == "cw" and "~<~" or "~>~"
+        elseif (Sliders.map[column][row] == "~<~") then
+            Sliders.map[column][row] = direction == "cw" and "~^~" or "~v~"
+        end
+    end
+    wait.make(Sliders.turn_crank_CR)
+end
+
+function Sliders.rotate_row(alias, line, wc)
+    if (not Sliders.in_crank_station()) then
+        Utility.print("You must be in a crank station to use this command.")
+        return
+    end
+    if (not next(Sliders.map)) then
+        Utility.print("The map is not yet initialized. Type '@Yglance@w' to view it.")
+        return
+    end
+    local row = tonumber(wc.row)
+    local direction = wc.direction:lower()
+    Send(line)
+    for column in string.gmatch("ABCDEF", "%a") do
+        if (Sliders.map[column][row] == "~^~") then
+            Sliders.map[column][row] = direction == "cw" and "~>~" or "~<~"
+        elseif (Sliders.map[column][row] == "~>~") then
+            Sliders.map[column][row] = direction == "cw" and "~v~" or "~^~"
+        elseif (Sliders.map[column][row] == "~v~") then
+            Sliders.map[column][row] = direction == "cw" and "~<~" or "~>~"
+        elseif (Sliders.map[column][row] == "~<~") then
+            Sliders.map[column][row] = direction == "cw" and "~^~" or "~v~"
+        end
+    end
+    wait.make(Sliders.turn_crank_CR)
+end
+
+function Sliders.turn_crank_CR()
+    local line = wait.regexp("^You turn Crank [A-F1-6], rotating some of the statues (?:counter)?clockwise\\.$", 3)
+    if (line) then
+        Sliders.show_map()
+    end
+end
+
+function Sliders.check_path(alias, line, wc)
+    local station = Sliders.in_crank_station()
+    -- Dirty debug hack follows. Uncomment, change any entry to make the map appear as needed,
+    -- and reinstall the plugin. Allows testing without having to actually run sliders. Pretty?
+    -- No. But functional.
+--[[    station = {dir="se", coord="F1"}
+    Sliders.map = {
+        A={Sliders.legend.ROCK, Sliders.legend.DIR_NORTH, Sliders.legend.DIR_EAST, Sliders.legend.ICE, Sliders.legend.ROCK, Sliders.legend.ROCK},
+        B={Sliders.legend.ROCK, Sliders.legend.DIR_NORTH, Sliders.legend.DIR_NORTH, Sliders.legend.ICE, Sliders.legend.ICE, Sliders.legend.DIR_EAST},
+        C={Sliders.legend.ICE, Sliders.legend.ICE, Sliders.legend.DIR_NORTH, Sliders.legend.DIR_WEST, Sliders.legend.ICE, Sliders.legend.DIR_SOUTH},
+        D={Sliders.legend.ICE, Sliders.legend.ICE, Sliders.legend.ICE, Sliders.legend.DIR_NORTH, Sliders.legend.ICE, Sliders.legend.ICE},
+        E={Sliders.legend.ROCK, Sliders.legend.DIR_WEST, Sliders.legend.ICE, Sliders.legend.DIR_WEST, Sliders.legend.ICE, Sliders.legend.DIR_EAST},
+        F={Sliders.legend.CURRENT_LOCATION, Sliders.legend.ICE, Sliders.legend.ICE, Sliders.legend.ROCK, Sliders.legend.ROCK, Sliders.legend.ROCK}
+    }]]
+    -- Now back to our regularly scheduled programming
+    if (not station) then
+        Utility.print("You must be in a crank station to use this command.")
+        return
+    end
+    if (not next(Sliders.map)) then
+        Utility.print("The map is not yet initialized. Type '@Yglance@w' to view it.")
+        return
+    end
+    local startDirs = utils.split(wc.startDirs:lower(), " ")
+    if (#startDirs > 3) then
+        Note(string.format("3 is maximum starting directions. %d given.", #startDirs))
+        return
+    end
+    local convertDirs = {n=Sliders.legend.DIR_NORTH, e=Sliders.legend.DIR_EAST, s=Sliders.legend.DIR_SOUTH, w=Sliders.legend.DIR_WEST}
+    for i, dir in ipairs(startDirs) do
+        startDirs[i] = convertDirs[startDirs[i]]
+    end
+    local marker = {
+        x=station.coord:sub(1, 1), y=tonumber(station.coord:sub(2, 2)),
+        dir=table.remove(startDirs, 1), steps=0, sliding=false
+    }
+    function marker:move(dir)
+        self.dir = dir or self.dir
+        if (self.dir == Sliders.legend.DIR_NORTH) then
+            if ((self.y == 6 and self.x ~= "D") -- On top row outside column D
+            or (self.x == "C" and self.y == 3)) then -- On C3
+                return false
+            end
+            self.y = self.y + 1
+        elseif (self.dir == Sliders.legend.DIR_EAST) then
+            if (self.x == "F" and self.y ~= 3) then -- On last column outside row 3
+                return false
+            end
+            -- This turns 'A' into 'B', 'B' into 'C', etc.
+            self.x = string.char(string.byte(self.x) + 1)
+        elseif (self.dir == Sliders.legend.DIR_SOUTH) then
+            if ((self.y == 1 and self.x ~= "C") -- On bottom row outside column C
+            or (self.x == "C" and self.y == 4)) then -- On C4
+                return false
+            end
+            self.y = self.y - 1
+        elseif (self.dir == Sliders.legend.DIR_WEST) then
+            if (self.x == "A" and self.y ~= 4) then -- On first column outside row 4
+                return false
+            end
+            -- This turns 'F' into 'E', 'E' into 'D', etc. If x is 'A', it will become '@'.
+            self.x = string.char(string.byte(self.x) - 1)
+        end -- dir
+        self.steps = self.steps + 1
+        return true
+    end
+    local MSG_SUCCESS = "@GSuccess@w. Current path will lead to %sern solid ground in %d steps."
+    local MSG_FAILURE = "@RFailure@w. Current path will end at %s%d in %d steps."
+    while (marker.steps < 50) do
+        if (not marker:move()) then
+            Utility.print(MSG_FAILURE:format(marker.x, marker.y, marker.steps))
+            return false
+        end
+        -- Check for success via 'fake' coords
+        if (marker.x == "@") then
+            Utility.print(MSG_SUCCESS:format("west", marker.steps))
+            return true
+        elseif (marker.x == "G") then
+            Utility.print(MSG_SUCCESS:format("east", marker.steps))
+            return true
+        elseif (marker.y == 7) then
+            Utility.print(MSG_SUCCESS:format("north", marker.steps))
+            return true
+        elseif (marker.y == 0) then
+            Utility.print(MSG_SUCCESS:format("south", marker.steps))
+            return true
+        end -- success
+        local newRoom = Sliders.map[marker.x][marker.y]
+        if (newRoom == Sliders.legend.ROCK) then
+            if (marker.sliding) then
+                -- Slid into rock, which is bad.
+                Utility.print(MSG_FAILURE:format(marker.x, marker.y, marker.steps))
+                return false
+            else
+                -- We haven't actually started sliding yet, so check for next start dir.
+                if (#startDirs > 0) then
+                    marker.dir = table.remove(startDirs, 1)
+                else
+                    Utility.print("Insufficient start directions given to begin sliding.")
+                    return false
+                end
+            end
+        elseif (newRoom == Sliders.legend.ICE) then
+            marker.sliding = true
+        else
+            -- Otherwise, new room is a statue room. Update dir.
+            marker.sliding = true
+            marker.dir = newRoom
+        end
+    end -- while
+    -- If we make it here, the path is too long.
+    Utility.print("The current path is too long (over 50 steps).")
+    return false
+end
+
+function Sliders.in_crank_station()
+    return Sliders.crankStations[gmcp("room.info.num")]
+end
+
+
+
+--------------------------------------------------
+-- Utility
+--------------------------------------------------
+
+Utility = {}
+
+function Utility.initialize()
+    -- General aliases
+    
+    local initializers = {
+        Sliders.initialize,
+    }
+    for _, initializer in ipairs(initializers) do
+        initializer()
+    end
+end
+
+function Utility.deinitialize()
+    local aliases = GetAliasList()
+    if (aliases) then
+        for i = 1, #aliases do
+            EnableAlias(aliases[i], false)
+            DeleteAlias(aliases[i])
+        end
+    end
+    local triggers = GetTriggerList()
+    if (triggers) then
+        for i = 1, #triggers do
+            EnableTrigger(triggers[i], false)
+            DeleteTrigger(triggers[i])
+        end
+    end
+end
+
+function Utility.print(str)
+    -- Lets us use Aard color codes in our ColourNotes
+    AnsiNote(stylesToANSI(ColoursToStyles("@w" .. str .. "@w")))
+end
+
+
+
+--------------------------------------------------
+-- Plugin Callbacks
+--------------------------------------------------
+
+function OnPluginInstall()
+    Utility.initialize()
+end
+
+function OnPluginConnect()
+    Send_GMCP_Packet("request char")
+end
+
+function OnPluginEnable()
+    OnPluginInstall()
+    if (IsConnected()) then
+        OnPluginConnect()
+    end
+end
+
+function OnPluginClose()
+    Utility.deinitialize()
+end
+
+function OnPluginDisable()
+    OnPluginClose()
+end
+
+function OnPluginBroadcast(msg, id, name, text)
+    if (id == "3e7dedbe37e44942dd46d264") then -- GMCP handler
+    end
+end
+]]>
+</script>
+
+
+</muclient>
